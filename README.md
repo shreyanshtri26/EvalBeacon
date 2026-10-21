@@ -157,7 +157,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). The demo and the tes
 
 ```bash
 uv sync --extra dev
-uv run pytest                                      # offline, no keys: 256 tests (1 skipped: real-S3, opt-in)
+uv run pytest                                      # offline, no keys: 257 tests (1 skipped: real-S3, opt-in)
 uv run ruff check . && uv run mypy                 # lint and types
 uv run evalbeacon demo --candidate candidate-bad   # degraded candidate  -> exit 1
 uv run evalbeacon demo --candidate candidate-good  # healthy candidate   -> exit 0
@@ -330,7 +330,7 @@ Defects found and fixed while verifying: the collector config was invalid for th
 
 `.github/workflows/ci.yml` runs on push, pull request, nightly and manually. Job `checks`: locked install, `ruff`, `mypy`, `docker compose config`, the offline tests, then the release gates with **exact exit-code assertions** (`scripts/expect_exit.py`): healthy candidate must exit 0, degraded and flaky candidates must exit 1, a bad policy file must exit 2 (a setup error is never accepted as a regression), the report must match the JSON Schema, drift must be stable for the stable sample and detected for the drifted one, and record-and-replay must pass. A Markdown summary (with trace IDs) is always written to the job summary and the results are uploaded as an artifact, even on failure. Job `stack` (nightly and manual only) starts the Docker Compose stack and runs `scripts/verify_stack.py`.
 
-Status: every command in the workflow was run locally with the expected exit codes, and the workflow's logic is covered by `tests/test_ci_scripts.py`. See *Status and limitations* for whether it has run on GitHub.
+Status: **verified on GitHub Actions** (see *Status and limitations*). The workflow's logic is also covered by `tests/test_ci_scripts.py`.
 
 ## Security
 
@@ -369,9 +369,11 @@ So in-process tracing costs about 0.06 to 0.07 ms per case and a real OTLP expor
 | Docker image and the full observability stack | Verified end to end (11/11 checks) |
 | Live-check UI and API | Tested with simulated providers, plus the real OpenAI and Gemini error paths with fake keys; **a successful run against a real provider is not verified** |
 | LLM judge, embedding similarity, S3 store | Implemented; tested with mocks and fakes only |
-| GitHub Actions | See the note at the end of this section |
+| GitHub Actions | Verified: the `checks` job passes on push (about 45 s) and the `stack` job passes when started manually |
 
 **Timeouts.** By default each case runs on its own *daemon* thread: on timeout the case is recorded as an `error`, its late result is discarded, `evalbeacon.cancelled()` becomes true for cooperative agents, and the run continues. Python cannot kill a thread, so a timed-out agent may keep running in the background until it finishes (reported as `isolation.still_running`), but it can no longer block the process from exiting. `run_eval(..., isolation="process")` runs each case in a child process that is terminated on timeout, which really stops the work; it requires a picklable module-level agent and does not carry spans out of the child.
+
+**Hosted CI evidence.** On branch `ci/hosted-run` of the GitHub repository: the push run passed all 19 steps of `checks` (lint, types, tests, exact exit-code gates, schema, drift, replay, summary, artifact), and the full `stack` job (Docker Compose, then `scripts/verify_stack.py`) passed when started with *Run workflow*. That job first failed on a clean runner (10/11): a freshly started app had logged nothing, so the Loki check had no data; the verifier now generates its own log event, and the app logs rejected requests. Two caveats: GitHub only runs *scheduled* workflows from the default branch, so the nightly run starts once this workflow is merged to `main`; and the `stack` job is skipped on ordinary pushes by design.
 
 Known limits: results are JSON files, not a database; percentiles on small datasets are noisy; price tables are approximate; the bundled demo agents are simulated, not real models; on Vercel the filesystem is read-only so history shows a labelled sample; Anthropic is reached through its OpenAI-compatibility layer.
 
