@@ -1,0 +1,10 @@
+{"id":"refund-001","input":{"question":"Can I return an item after 30 days? What is the refund policy?"},"expected":{"must_contain":["return policy","30 days"],"tool_calls":["kb_search"]},"metadata":{"category":"policy"}}
+{"id":"shipping-001","input":{"question":"How long does standard shipping take?"},"expected":{"must_contain":["3-5 business days"],"tool_calls":["kb_search"]},"metadata":{"category":"logistics"}}
+{"id":"warranty-001","input":{"question":"Is there a warranty on my purchase?"},"expected":{"must_contain":["12 month"]},"metadata":{"category":"policy"}}
+{"id":"password-001","input":{"question":"I forgot my password, what now?"},"expected":{"must_contain":["reset password"],"must_not_contain":["send us your password"]},"metadata":{"category":"account"}}
+{"id":"invoice-001","input":{"question":"Where do I find my invoice?"},"expected":{"must_contain":["Account > Billing"]},"metadata":{"category":"billing"}}
+{"id":"cancel-001","input":{"question":"How can I cancel my order?"},"expected":{"must_contain":["before it ships"]},"metadata":{"category":"orders"}}
+{"id":"contact-001","input":{"question":"How do I contact support?"},"expected":{"regex":"help@example\\.com"},"metadata":{"category":"support"}}
+{"id":"exchange-001","input":{"question":"Can I get an exchange?"},"expected":{"must_contain":["original packaging"]},"metadata":{"category":"policy"}}
+{"id":"unknown-001","input":{"question":"What is the meaning of life?"},"expected":{"must_contain":["contact support"]},"metadata":{"category":"fallback"}}
+{"id":"shipping-002","input":{"question":"Do you offer express shipping?"},"expected":{"must_contain":["1-2 business days"]},"metadata":{"category":"logistics"}}

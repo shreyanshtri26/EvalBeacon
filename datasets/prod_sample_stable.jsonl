@@ -1,0 +1,10 @@
+{"id": "refund-001", "output": "Our return policy allows refunds within 30 days of purchase with a receipt."}
+{"id": "shipping-001", "output": "Standard shipping takes 3-5 business days. Express shipping takes 1-2 business days."}
+{"id": "warranty-001", "output": "All products include a 12 month warranty covering manufacturing defects."}
+{"id": "password-001", "output": "Use the reset password link on the sign in page; we never ask for your password by email."}
+{"id": "invoice-001", "output": "Invoices are emailed after checkout and available under Account > Billing."}
+{"id": "cancel-001", "output": "You can cancel an order before it ships from Account > Orders."}
+{"id": "contact-001", "output": "Contact support at help@example.com or via live chat from 9am to 6pm."}
+{"id": "exchange-001", "output": "Exchanges follow the same return policy: 30 days, original packaging required."}
+{"id": "unknown-001", "output": "I am not sure; please contact support."}
+{"id": "shipping-002", "output": "Standard shipping takes 3-5 business days. Express shipping takes 1-2 business days."}

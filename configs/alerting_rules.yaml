@@ -1,0 +1,179 @@
+# alerting_rules.yaml
+# ===================
+# Prometheus alerting rules for LLM observability SLOs.
+#
+# Principal SRE Note:
+#   These rules implement multi-window, multi-burn-rate SLO alerting
+#   following Google's SRE Workbook Chapter 5 methodology.
+#   Burn rates trigger on both fast (1h) and slow (6h) windows.
+
+groups:
+  # ─── LLM Latency SLOs ────────────────────────────────────────────────────
+  - name: llm_latency_slos
+    interval: 30s
+    rules:
+      - alert: LLMHighLatencyP99
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le, gen_ai_system, gen_ai_request_model) (
+              rate(gen_ai_client_operation_duration_seconds_bucket[5m])
+            )
+          ) > 5.0
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          slo: llm_latency
+        annotations:
+          summary: "LLM p99 latency SLO violation"
+          description: |
+            Model {{ $labels.gen_ai_request_model }} on {{ $labels.gen_ai_system }}
+            p99 latency is {{ $value | humanizeDuration }} (threshold: 5s)
+          runbook: "https://runbooks.internal/llm-latency-p99"
+
+      - alert: LLMHighLatencyP99Critical
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum by (le, gen_ai_system, gen_ai_request_model) (
+              rate(gen_ai_client_operation_duration_seconds_bucket[5m])
+            )
+          ) > 15.0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+          slo: llm_latency
+          page: "true"
+        annotations:
+          summary: "LLM p99 latency CRITICAL SLO violation"
+          description: |
+            Model {{ $labels.gen_ai_request_model }} p99 latency is
+            {{ $value | humanizeDuration }} — exceeds critical threshold (15s)
+          runbook: "https://runbooks.internal/llm-latency-critical"
+
+  # ─── LLM Error Rate SLOs ─────────────────────────────────────────────────
+  - name: llm_error_rate_slos
+    interval: 30s
+    rules:
+      - alert: LLMHighErrorRate
+        expr: |
+          sum by (gen_ai_system, gen_ai_request_model) (
+            rate(llm_request_errors_total[5m])
+          )
+          /
+          sum by (gen_ai_system, gen_ai_request_model) (
+            rate(gen_ai_client_operation_duration_seconds_count[5m])
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+          slo: llm_error_rate
+        annotations:
+          summary: "LLM error rate above 1% SLO"
+          description: |
+            Model {{ $labels.gen_ai_request_model }} error rate is
+            {{ $value | humanizePercentage }}
+          runbook: "https://runbooks.internal/llm-error-rate"
+
+      - alert: LLMRateLimitErrors
+        expr: |
+          sum by (gen_ai_system, gen_ai_request_model) (
+            rate(llm_request_errors_total{error_type="rate_limit"}[10m])
+          ) > 1
+        for: 2m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "LLM rate limit errors detected"
+          description: |
+            {{ $labels.gen_ai_system }}/{{ $labels.gen_ai_request_model }}
+            is hitting rate limits. Consider request queuing or model fallback.
+          runbook: "https://runbooks.internal/llm-rate-limits"
+
+  # ─── Token Budget Alerts ──────────────────────────────────────────────────
+  - name: llm_token_budget
+    interval: 60s
+    rules:
+      - alert: LLMTokenBudgetUtilizationHigh
+        expr: |
+          sum(rate(gen_ai_client_token_usage_total{gen_ai_token_type="input"}[1h])) * 3600
+          / on() group_left() llm_token_budget_limit_total > 0.80
+        for: 10m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "LLM token budget >80% utilized"
+          description: "Token budget utilization is {{ $value | humanizePercentage }}. Review usage to avoid budget overrun."
+
+      - alert: LLMTokenBudgetCritical
+        expr: |
+          sum(rate(gen_ai_client_token_usage_total{gen_ai_token_type="input"}[1h])) * 3600
+          / on() group_left() llm_token_budget_limit_total > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          team: platform
+          page: "true"
+        annotations:
+          summary: "LLM token budget >95% — CRITICAL"
+          description: "Token budget utilization is {{ $value | humanizePercentage }}. Throttling may be imminent."
+
+  # ─── Cost Monitoring ──────────────────────────────────────────────────────
+  - name: llm_cost_monitoring
+    interval: 300s  # 5-minute intervals to reduce noise
+    rules:
+      - alert: LLMCostSpike
+        expr: |
+          sum(rate(llm_estimated_cost_usd_total[1h])) * 3600
+          > 100
+        for: 15m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "LLM hourly cost exceeds $100"
+          description: "Current hourly LLM cost estimate is ${{ $value | printf \"%.2f\" }}"
+
+      - alert: LLMCostAnomalyDetected
+        expr: |
+          sum(rate(llm_estimated_cost_usd_total[1h])) * 3600
+          > 3 * avg_over_time(
+            (sum(rate(llm_estimated_cost_usd_total[1h])) * 3600)[7d:1h]
+          )
+        for: 30m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "LLM cost anomaly detected (3x baseline)"
+          description: "LLM costs are {{ $value | printf \"%.2f\" }}x above 7-day baseline. Investigate usage pattern."
+
+  # ─── Infrastructure Health ────────────────────────────────────────────────
+  - name: llm_infra_health
+    interval: 30s
+    rules:
+      - alert: OTelCollectorDown
+        expr: up{job="otel-collector"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          team: platform
+          page: "true"
+        annotations:
+          summary: "OTel Collector is down — telemetry gap!"
+          description: "OpenTelemetry Collector has been unreachable for 2+ minutes. Observability data is not being collected."
+
+      - alert: LLMActiveRequestsHigh
+        expr: sum(llm_active_requests) > 50
+        for: 5m
+        labels:
+          severity: warning
+          team: platform
+        annotations:
+          summary: "High number of concurrent LLM requests"
+          description: "{{ $value }} concurrent LLM requests. Check for runaway clients or slow model responses."

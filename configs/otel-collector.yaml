@@ -1,0 +1,153 @@
+# otel-collector.yaml
+# ====================
+# OpenTelemetry Collector configuration for LLM observability.
+#
+# Principal SRE Note:
+#   This collector receives all telemetry from LLM applications and routes
+#   it to the appropriate backends. Key design decisions:
+#   - Batch processing to reduce egress load
+#   - Attribute filtering to remove PII from traces
+#   - Tail sampling for high-cardinality LLM traces
+#   - Resource detection for Kubernetes environments
+
+receivers:
+  # Receive traces, metrics, and logs from instrumented apps
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Scrape Prometheus metrics from the app itself
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: "llm-observability-app"
+          scrape_interval: 15s
+          static_configs:
+            - targets: ["llm-app:8000"]
+          metrics_path: /metrics
+
+  # Host metrics for resource utilization context
+  hostmetrics:
+    collection_interval: 30s
+    scrapers:
+      cpu: {}
+      memory: {}
+      network: {}
+
+processors:
+  # Batch spans/metrics/logs before export (reduces network overhead)
+  batch:
+    timeout: 5s
+    send_batch_size: 1000
+    send_batch_max_size: 2000
+
+  # Memory limiter to prevent OOM in the collector
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 512
+    spike_limit_mib: 128
+
+  # Add resource attributes (useful for K8s environments)
+  resource:
+    attributes:
+      - key: collector.version
+        value: "0.88.0"
+        action: upsert
+      # In collector 0.88 the loki exporter takes its labels from this hint (the old `labels:` block is rejected)
+      - key: loki.resource.labels
+        value: service.name, service.version, deployment.environment
+        action: insert
+
+  # Filter out noisy health check traces
+  filter/health_checks:
+    traces:
+      span:
+        - 'attributes["http.target"] == "/health"'
+        - 'attributes["http.target"] == "/metrics"'
+        - 'attributes["http.route"] == "/health"'
+
+  # Enrich LLM spans with cost tier labels
+  attributes/cost_tier:
+    actions:
+      - key: llm.cost_tier
+        action: insert
+        value: "standard"
+
+  # Tail-based sampling: sample 100% of error traces, 10% of success traces
+  # Reduces storage cost for high-volume LLM applications
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 100
+    expected_new_traces_per_sec: 100
+    policies:
+      - name: errors-policy
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow-traces-policy
+        type: latency
+        latency:
+          threshold_ms: 5000
+      - name: probabilistic-policy
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+
+exporters:
+  # Export traces to Jaeger (or Grafana Tempo)
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+  # Export metrics to Prometheus
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: "llm_observability"
+    send_timestamps: true
+    metric_expiration: 180m
+
+  # Export logs to Loki
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+
+  # Debug exporter for local development
+  debug:
+    verbosity: normal
+
+  # Remote write to external Prometheus (for multi-cluster setups)
+  prometheusremotewrite:
+    endpoint: "http://prometheus:9090/api/v1/write"
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/health_checks, attributes/cost_tier, batch]
+      exporters: [otlp/jaeger, debug]
+
+    metrics:
+      receivers: [otlp, prometheus, hostmetrics]
+      processors: [memory_limiter, resource, batch]
+      exporters: [prometheus, prometheusremotewrite]
+
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [loki, debug]
+
+  extensions:
+    - health_check
+    - pprof
+    - zpages
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+  pprof:
+    endpoint: 0.0.0.0:1777
+  zpages:
+    endpoint: 0.0.0.0:55679

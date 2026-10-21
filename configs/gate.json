@@ -1,0 +1,8 @@
+{
+  "min_cases": 5,
+  "max_pass_rate_drop": 0.05,
+  "max_error_rate": 0.10,
+  "max_p95_latency_increase_pct": 5000,
+  "max_cost_increase_pct": 25,
+  "max_regressions": 0
+}

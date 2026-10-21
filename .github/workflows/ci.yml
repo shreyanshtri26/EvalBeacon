@@ -1,0 +1,108 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+  schedule:
+    - cron: "0 3 * * *"   # nightly: gates, drift and the full observability stack
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: lint, types, tests, release gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install (locked, reproducible)
+        run: uv sync --extra dev --frozen
+
+      # ── static checks ──
+      - name: Lint (ruff)
+        run: uv run ruff check .
+      - name: Types (mypy)
+        run: uv run mypy
+      - name: Compose file is valid
+        run: docker compose config -q
+        env:
+          GEMINI_API_KEY: ""
+          DEEPSEEK_API_KEY: ""
+          OPENAI_API_KEY: ""
+
+      # ── offline tests (no provider keys, no network) ──
+      - name: Tests
+        run: uv run pytest -q -ra
+
+      # ── release gates: each step asserts the exact exit code ──
+      - name: Gate - healthy candidate must PASS (exit 0)
+        run: uv run python scripts/expect_exit.py 0 -- uv run evalbeacon demo --candidate candidate-good
+      - name: Gate - degraded candidate must be BLOCKED (exit 1)
+        run: uv run python scripts/expect_exit.py 1 -- uv run evalbeacon demo --candidate candidate-bad
+      - name: Gate - flaky provider must be BLOCKED on error rate (exit 1)
+        run: uv run python scripts/expect_exit.py 1 -- uv run evalbeacon demo --candidate candidate-flaky
+      - name: Setup error must be exit 2, never a regression
+        run: uv run python scripts/expect_exit.py 2 -- uv run evalbeacon demo --policy does-not-exist.json
+      - name: Keep the degraded report for the summary and artifacts
+        run: uv run python scripts/expect_exit.py 1 -- uv run evalbeacon demo --candidate candidate-bad
+
+      # ── contracts ──
+      - name: Report matches the JSON Schema
+        run: |
+          uv run python scripts/validate_report.py results/report.json
+          uv run python scripts/validate_report.py --kind run results/baseline.json results/candidate.json
+      - name: Drift - stable production sample is stable (exit 0), drifted sample is drift (exit 1)
+        run: |
+          uv run python scripts/expect_exit.py 0 -- uv run evalbeacon drift --golden results/baseline.json --current datasets/prod_sample_stable.jsonl
+          uv run python scripts/expect_exit.py 1 -- uv run evalbeacon drift --golden results/baseline.json --current datasets/prod_sample_drifted.jsonl
+      - name: Replay with recorded tools (no live tools called)
+        run: |
+          uv run evalbeacon replay --record
+          uv run evalbeacon replay
+
+      # ── reporting: always, so a failure still leaves evidence ──
+      - name: Job summary
+        if: always()
+        run: uv run python scripts/ci_summary.py results/report.json >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload results (JSON reports, history, cassette)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evalbeacon-results
+          path: results/
+          if-no-files-found: warn
+          retention-days: 14
+
+  stack:
+    name: observability stack end to end
+    # Pulls ~1.5 GB of images: only on the nightly schedule or when started by hand.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --extra dev --frozen
+      - name: Start the stack
+        run: docker compose up -d --build
+        env:
+          GEMINI_API_KEY: ""
+          DEEPSEEK_API_KEY: ""
+          OPENAI_API_KEY: ""
+      - name: Verify telemetry reaches Jaeger, Prometheus, Loki and Grafana
+        run: uv run python scripts/verify_stack.py
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v

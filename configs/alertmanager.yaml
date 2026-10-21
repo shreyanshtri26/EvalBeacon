@@ -1,0 +1,7 @@
+# Local Alertmanager: accepts alerts and routes them nowhere. Add a real receiver (Slack, PagerDuty, email) before use.
+route:
+  receiver: "null"
+  group_by: ["alertname"]
+
+receivers:
+  - name: "null"

@@ -1,0 +1,28 @@
+{"id": "refund-001", "input": {"question": "Can I get a refund for an order I placed last week?"}, "expected": {"must_contain": ["return policy", "30 days"], "tool_calls": ["kb_search"]}, "metadata": {"category": "policy"}}
+{"id": "refund-002", "input": {"question": "What is your refund policy for damaged items?"}, "expected": {"must_contain": ["return policy", "30 days"]}, "metadata": {"category": "policy"}}
+{"id": "refund-003", "input": {"question": "How long do refunds take to reach my card?"}, "expected": {"must_contain": ["return policy", "30 days"]}, "metadata": {"category": "policy"}}
+{"id": "shipping-001", "input": {"question": "How long does standard shipping take to Texas?"}, "expected": {"must_contain": ["business days"], "tool_calls": ["kb_search"]}, "metadata": {"category": "logistics"}}
+{"id": "shipping-002", "input": {"question": "Is express shipping available for international orders?"}, "expected": {"must_contain": ["business days"]}, "metadata": {"category": "logistics"}}
+{"id": "shipping-003", "input": {"question": "What are your shipping options at checkout?"}, "expected": {"must_contain": ["business days"]}, "metadata": {"category": "logistics"}}
+{"id": "warranty-001", "input": {"question": "Does the warranty cover accidental damage?"}, "expected": {"must_contain": ["12 month"], "tool_calls": ["kb_search"]}, "metadata": {"category": "policy"}}
+{"id": "warranty-002", "input": {"question": "How do I claim my warranty on a faulty charger?"}, "expected": {"must_contain": ["12 month"]}, "metadata": {"category": "policy"}}
+{"id": "warranty-003", "input": {"question": "How long is the warranty on electronics?"}, "expected": {"must_contain": ["12 month"]}, "metadata": {"category": "policy"}}
+{"id": "password-001", "input": {"question": "I forgot my password and the email never arrives."}, "expected": {"must_contain": ["reset password"], "tool_calls": ["kb_search"]}, "metadata": {"category": "account"}}
+{"id": "password-002", "input": {"question": "How do I change my password on mobile?"}, "expected": {"must_contain": ["reset password"]}, "metadata": {"category": "account"}}
+{"id": "password-003", "input": {"question": "Will you ever ask for my password over email?"}, "expected": {"must_contain": ["reset password"]}, "metadata": {"category": "account"}}
+{"id": "invoice-001", "input": {"question": "Where can I download last month's invoice?"}, "expected": {"must_contain": ["Account > Billing"], "tool_calls": ["kb_search"]}, "metadata": {"category": "billing"}}
+{"id": "invoice-002", "input": {"question": "My invoice shows the wrong address, who fixes it?"}, "expected": {"must_contain": ["Account > Billing"]}, "metadata": {"category": "billing"}}
+{"id": "invoice-003", "input": {"question": "Can you resend the invoice for order 4821?"}, "expected": {"must_contain": ["Account > Billing"]}, "metadata": {"category": "billing"}}
+{"id": "cancel-001", "input": {"question": "How can I cancel an order I just placed?"}, "expected": {"must_contain": ["before it ships"], "tool_calls": ["kb_search"]}, "metadata": {"category": "orders"}}
+{"id": "cancel-002", "input": {"question": "Is it too late to cancel my order from yesterday?"}, "expected": {"must_contain": ["before it ships"]}, "metadata": {"category": "orders"}}
+{"id": "cancel-003", "input": {"question": "Can I cancel only one item in an order?"}, "expected": {"must_contain": ["before it ships"]}, "metadata": {"category": "orders"}}
+{"id": "contact-001", "input": {"question": "How do I contact support outside business hours?"}, "expected": {"must_contain": ["help@example.com"], "tool_calls": ["kb_search"]}, "metadata": {"category": "support"}}
+{"id": "contact-002", "input": {"question": "What is the best way to contact a human agent?"}, "expected": {"must_contain": ["help@example.com"]}, "metadata": {"category": "support"}}
+{"id": "contact-003", "input": {"question": "Is there a phone number to contact you?"}, "expected": {"must_contain": ["help@example.com"]}, "metadata": {"category": "support"}}
+{"id": "exchange-001", "input": {"question": "Can I exchange a sweater for a different size?"}, "expected": {"must_contain": ["original packaging"], "tool_calls": ["kb_search"]}, "metadata": {"category": "policy"}}
+{"id": "exchange-002", "input": {"question": "Do I pay anything extra on an exchange?"}, "expected": {"must_contain": ["original packaging"]}, "metadata": {"category": "policy"}}
+{"id": "exchange-003", "input": {"question": "How do I start an exchange for a gift?"}, "expected": {"must_contain": ["original packaging"]}, "metadata": {"category": "policy"}}
+{"id": "fallback-001", "input": {"question": "What is the meaning of life?"}, "expected": {"must_contain": ["contact support"], "must_not_contain": ["http://"]}, "metadata": {"category": "fallback"}}
+{"id": "fallback-002", "input": {"question": "Do you sell gift cards for restaurants?"}, "expected": {"must_contain": ["contact support"], "must_not_contain": ["http://"]}, "metadata": {"category": "fallback"}}
+{"id": "fallback-003", "input": {"question": "Can you recommend a good movie tonight?"}, "expected": {"must_contain": ["contact support"], "must_not_contain": ["http://"]}, "metadata": {"category": "fallback"}}
+{"id": "fallback-004", "input": {"question": "Who won the football match yesterday?"}, "expected": {"must_contain": ["contact support"], "must_not_contain": ["http://"]}, "metadata": {"category": "fallback"}}
