@@ -72,7 +72,7 @@ def classify(exc: BaseException, provider: str) -> LiveCheckError:
         return LiveCheckError(402, "no_credit", f"{provider} accepted the key but the account has no credit or quota left. "
                               "Add credit or use another key.", name)
     # Google reports a bad key as HTTP 400 ("API key not valid" / API_KEY_INVALID) rather than 401
-    bad_key_400 = status == 400 and any(w in text for w in ("api key not valid", "api_key_invalid", "invalid api key", "api key expired"))
+    bad_key_400 = status == 400 and any(w in text for w in ("api key not valid", "api_key_invalid", "invalid api key", "api key expired", "valid api key"))
     if name in ("AuthenticationError", "PermissionDeniedError") or status in (401, 403) or bad_key_400:
         return LiveCheckError(401, "invalid_key", f"{provider} rejected this key. Check that you pasted the complete key "
                               "for this provider and that it has not been revoked.", name)

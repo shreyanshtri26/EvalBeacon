@@ -106,6 +106,7 @@ def chat(request: ChatRequest):
             ],
         )
     except ValueError as exc:  # unknown provider or missing key (message names the variable, never its value)
+        logger.warning("Chat request rejected: %s", exc)  # operators should see misconfiguration, not just client errors
         raise HTTPException(status_code=400, detail=str(exc))
     except Exception as exc:
         logger.error("Chat request failed: %s", exc, exc_info=True)  # redacted by the logging filter
@@ -166,6 +167,7 @@ def rag_query(request: RAGRequest):
                     ],
                 )
             except ValueError as exc:
+                logger.warning("RAG request rejected: %s", exc)
                 raise HTTPException(status_code=400, detail=str(exc))
             except Exception as exc:
                 logger.error("RAG generation failed: %s", exc, exc_info=True)

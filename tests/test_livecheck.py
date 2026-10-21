@@ -284,5 +284,9 @@ def test_gemini_reports_a_bad_key_as_http_400_and_we_still_call_it_an_invalid_ke
                            "'status': 'INVALID_ARGUMENT', 'details': [{'reason': 'API_KEY_INVALID'}]}}]", 400, None, "BadRequestError")
     e = classify(gemini, "gemini")
     assert e.status == 401 and e.code == "invalid_key" and "Gemini rejected this key" in e.message
+    # the exact text Gemini's OpenAI-compatible endpoint returned for a fake key when checked against the live service
+    real = ProviderError("Error code: 400 - {'error': {'code': 400, 'message': 'Please pass a valid API key', 'status': 'INVALID_ARGUMENT'}}",
+                         400, None, "BadRequestError")
+    assert classify(real, "gemini").code == "invalid_key"
     # an ordinary 400 (for example a bad request body) is not blamed on the key
     assert classify(ProviderError("Unsupported parameter: max_tokens", 400, None, "BadRequestError"), "openai").code == "provider_error"

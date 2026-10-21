@@ -95,6 +95,15 @@ check("metrics from collector exporter present", lambda: retry(lambda: int(float
     f"{URLS['PROMETHEUS']}/api/v1/query?query=" + urllib.parse.quote('count({__name__=~"llm_observability.*"})')))["data"]["result"][0]["value"][1]))))
 check("loki ready", lambda: retry(lambda: get(f"{URLS['LOKI']}/ready").strip()))
 def loki_has_logs() -> int:
+    """A freshly started app has logged nothing, so first make it log: a chat request that cannot succeed
+    (no key in a clean CI runner, or a rejected key locally) emits a WARNING/ERROR that must reach Loki."""
+    try:
+        req = urllib.request.Request(f"{URLS['APP']}/api/v1/chat", data=json.dumps({"message": "log probe", "provider": "deepseek"}).encode(),
+                                     headers={"Content-Type": "application/json"}, method="POST")
+        urllib.request.urlopen(req, timeout=20)
+    except Exception:  # noqa: BLE001 — 400/502 is the expected outcome; only the log line matters
+        pass
+
     def once():
         q = urllib.parse.urlencode({"query": '{service_name=~".+"}', "limit": 1})
         streams = json.loads(get(f"{URLS['LOKI']}/loki/api/v1/query_range?{q}"))["data"]["result"]
