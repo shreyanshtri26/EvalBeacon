@@ -20,6 +20,10 @@ h1{font-size:18px;letter-spacing:-.01em}
 h2{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:30px 0 10px}
 a{color:var(--accent)}
 .sp{flex:1}
+.nav{display:flex;gap:4px}
+.nav a{text-decoration:none;color:var(--muted);font-weight:500;padding:6px 10px;border-radius:7px}
+.nav a:hover{color:var(--text);background:var(--surface-2)}
+.nav a[aria-current]{color:var(--text)}
 .pill{font-size:12px;padding:2px 10px;border:1px solid var(--line);border-radius:99px;color:var(--muted);background:var(--surface)}
 .lead{color:var(--muted);max-width:70ch;margin-bottom:6px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;overflow-x:auto}
@@ -55,7 +59,7 @@ button[aria-pressed=true]{border-color:var(--accent);color:var(--accent)}
 </head>
 <body>
 <div class="wrap">
-  <header><h1>SWE-bench audit</h1><span class="pill" id="mode">loading</span><span class="sp"></span><a href="/">Release gate</a></header>
+  <header><h1>SWE-bench audit</h1><span class="pill" id="mode">loading</span><span class="sp"></span><nav class="nav" aria-label="Pages"><a href="/ui">Release gate</a><a href="/audit" aria-current="page">SWE-bench audit</a><a href="/docs">API docs</a></nav></header>
   <p class="lead">How much of a SWE-bench Verified score comes from the grader, the task and the scaffold rather than the model. Hidden fields (gold patch, tests) are never served.</p>
 
   <h2>Method</h2>
