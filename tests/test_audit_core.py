@@ -111,3 +111,29 @@ def test_evidence_is_content_addressed_and_idempotent(tmp_path):
     a = db.put_evidence("log text", tmp_path)
     assert a == db.put_evidence("log text", tmp_path) and db.get_evidence(a, tmp_path) == "log text"
     assert len(list(tmp_path.glob("*.log.gz"))) == 1
+
+
+def test_get_retries_transient_errors(monkeypatch):
+    import io
+    import urllib.error
+
+    from src.audit import submissions
+
+    calls = []
+
+    class R(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+    def flaky(req, timeout):
+        calls.append(1)
+        if len(calls) < 3:
+            raise urllib.error.URLError("reset")
+        return R(b"ok")
+
+    monkeypatch.setattr(submissions.urllib.request, "urlopen", flaky)
+    monkeypatch.setattr(submissions.time, "sleep", lambda s: None)
+    assert submissions._get("https://example.test/x") == "ok" and len(calls) == 3

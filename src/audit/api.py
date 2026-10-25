@@ -19,7 +19,7 @@ from src.audit import db, review, tasks
 
 router = APIRouter(prefix="/api/v1/audit")
 ROOT = Path(__file__).resolve().parents[2]
-REPORTS = ROOT / "reports" / "audit"
+REPORTS = Path(os.environ.get("AUDIT_REPORTS", ROOT / "data" / "audit" / "reports"))
 UI = Path(__file__).resolve().parents[1] / "evalbeacon" / "ui" / "audit.html"
 _TASK = re.compile(r"^[A-Za-z0-9_.\-]+__[A-Za-z0-9_.\-]+-\d+$")
 _NAME = re.compile(r"^[a-z0-9][a-z0-9._\-]{0,120}$")

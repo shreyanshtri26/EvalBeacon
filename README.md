@@ -157,7 +157,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). The demo and the tes
 
 ```bash
 uv sync --extra dev
-uv run pytest                                      # offline, no keys: 297 tests (1 skipped: real-S3, opt-in)
+uv run pytest                                      # offline, no keys: 299 tests (1 skipped: real-S3, opt-in)
 uv run ruff check . && uv run mypy                 # lint and types
 uv run evalbeacon demo --candidate candidate-bad   # degraded candidate  -> exit 1
 uv run evalbeacon demo --candidate candidate-good  # healthy candidate   -> exit 0
@@ -237,11 +237,11 @@ Validation failures return 422 without echoing the rejected input.
 | `nullrank` | Rank stability when k random tasks are removed (the noise floor) |
 | `status` | What has been run and reviewed |
 
-API under `/api/v1/audit`: `overview`, `reports/{name}`, `tasks`, `tasks/{id}`, `evidence/{sha}`, `agreement`, and `POST annotations` / `adjudications`, which need `AUDIT_WRITE=1` (local single-user only). `AUDIT_DATA` and `AUDIT_DB` override the data and database paths. Reports are written to `data/audit/reports`.
+API under `/api/v1/audit`: `overview`, `reports/{name}`, `tasks`, `tasks/{id}`, `evidence/{sha}`, `agreement`, and `POST annotations` / `adjudications`, which need `AUDIT_WRITE=1` (local single-user only). `AUDIT_DATA` and `AUDIT_DB` override the data and database paths. Reports are written to `data/audit/reports` (override with `AUDIT_REPORTS`); `stage_vercel.py` ships them with the hosted bundle.
 
 The browser UI is at `/audit` (task browser, grader evidence hashes, published reports). On the hosted app it runs in reports-only mode: no benchmark data is shipped, so the task list is absent and review writes are disabled. Study protocol and annotation rubric: `audit/preregistration.txt` and `audit/rubric.txt`.
 
-**Status.** Implemented and covered by offline tests (stats, core, API, study); the hosted run needs no Docker. Not yet done: the full 100-task contamination study and re-grading runs were started locally but their results are not published here, so no audit finding is claimed in this README.
+**Result so far (leak scan, one seed, 100 tasks, mini-SWE-agent entries only).** The agent patch overlapped the gold patch in 2/909 trajectories before the image fix (0.22%, 95% CI 0.00-0.66%, task-clustered) and 23/2,525 after (0.91%, CI 0.16-1.94%). The intervals overlap and entries differ in model as well as date, so this is descriptive, not causal. 606 of 1,515 pre-fix trajectories were unavailable, so that group is weak. Not done yet: re-grading and human review, so no verdict on any submission is claimed.
 
 ## Datasets and evaluators
 

@@ -121,3 +121,13 @@ def test_audit_page_is_served(env):
     c, _ = env
     r = c.get("/audit")
     assert r.status_code == 200 and "SWE-bench audit" in r.text
+
+
+def test_reports_are_listed_and_served(env, monkeypatch, tmp_path):
+    c, _ = env
+    rep = tmp_path / "reports"
+    rep.mkdir()
+    (rep / "demo.json").write_text('{"entries": 3}', encoding="utf-8")
+    monkeypatch.setattr(audit_api, "REPORTS", rep)
+    assert c.get("/api/v1/audit/overview").json()["reports"] == ["demo"]
+    assert c.get("/api/v1/audit/reports/demo").json() == {"entries": 3}

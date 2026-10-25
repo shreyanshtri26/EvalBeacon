@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -34,8 +35,18 @@ def _get(url: str, binary: bool = False, timeout: float = 60.0):
     req = urllib.request.Request(url, headers={"User-Agent": "swebench-audit",
                                                **({"Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}"}
                                                   if "GITHUB_TOKEN" in os.environ and "api.github" in url else {})})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = r.read()
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                data = r.read()
+            break
+        except urllib.error.HTTPError as e:  # 4xx is an answer (e.g. missing file); only 429/5xx are transient
+            if e.code not in (429, 500, 502, 503, 504) or attempt == 3:
+                raise
+        except (urllib.error.URLError, TimeoutError, ConnectionError):
+            if attempt == 3:
+                raise
+        time.sleep(2 ** attempt)
     return data if binary else data.decode("utf-8")
 
 
