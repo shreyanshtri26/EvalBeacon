@@ -53,6 +53,7 @@ dependencies = [
 
 [project.scripts]
 evalbeacon = "src.evalbeacon.cli:main"
+swebench-audit = "src.audit.cli:main"
 
 [project.optional-dependencies]
 dev = [
@@ -69,6 +70,9 @@ s3 = ["boto3>=1.28.0"]  # optional: S3PayloadStore
 langchain = [
     "langchain>=0.2.0",
     "langchain-openai>=0.1.0",
+]
+audit = [
+    "swebench==5.0.2",
 ]
 
 [tool.setuptools.package-data]

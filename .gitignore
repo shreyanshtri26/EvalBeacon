@@ -208,3 +208,7 @@ __marimo__/
 
 # EvalBeacon outputs
 results/
+
+# SWE-bench Audit: downloaded benchmark data (licence unstated upstream; never committed) and run artifacts
+data/swebench/
+data/audit/

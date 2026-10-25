@@ -1,0 +1,17 @@
+SWE-bench task rubric (v0, to be revised after the 20-task pilot)
+Annotate from the public fields only (issue text, repo, base commit) first, then see the tests.
+Answer each item yes / no / unclear and quote the evidence.
+
+A. Issue clarity
+  A1 Could a competent engineer state the required behaviour from the issue alone?
+  A2 Does the issue admit more than one reasonable fix?
+B. Test alignment
+  B1 Does every FAIL_TO_PASS test check behaviour stated in the issue?
+  B2 Does any test require a specific name, message or signature the issue never gives?
+  B3 Could a correct alternative fix fail the tests?
+C. Test sufficiency
+  C1 Could an obviously incomplete patch pass the tests?
+D. Environment
+  D1 Does the task depend on network, time, ordering or hardware?
+Label: ok | underspecified (A) | overspecific tests (B) | weak tests (C) | environment (D).
+Two annotators, independently; disagreements go to adjudication; report kappa before adjudicating.

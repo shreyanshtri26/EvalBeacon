@@ -13,7 +13,7 @@ if out.exists():
 out.mkdir(parents=True)
 
 ignore = shutil.ignore_patterns("__pycache__", "*.pyc")
-for src in ("src/evalbeacon", "src/exporters", "src/collectors"):
+for src in ("src/evalbeacon", "src/exporters", "src/collectors", "src/audit"):
     shutil.copytree(root / src, out / src, ignore=ignore)
 (out / "src" / "evalbeacon" / "ui").mkdir(exist_ok=True)
 shutil.copytree(root / "datasets", out / "datasets")

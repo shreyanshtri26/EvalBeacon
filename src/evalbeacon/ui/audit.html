@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EvalBeacon Audit</title>
+<meta name="description" content="SWE-bench grader audit: task browser, grader evidence and published reports.">
+<link rel="icon" type="image/png" href="/logo-64.png">
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--line:#e4e7ec;--text:#101828;--muted:#667085;--pass:#067647;--fail:#b42318;--accent:#0e9f6e;
+  --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a0c10;--surface:#12151b;--line:#232833;--text:#eef1f6;--muted:#98a2b3;--pass:#6ee7b7;--fail:#fda29b;--accent:#34d399}}
+:root[data-theme="dark"]{--bg:#0a0c10;--surface:#12151b;--line:#232833;--text:#eef1f6;--muted:#98a2b3;--pass:#6ee7b7;--fail:#fda29b;--accent:#34d399}
+*{box-sizing:border-box;margin:0}
+body{font:14px/1.55 var(--sans);color:var(--text);background:var(--bg);min-height:100vh}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px 64px}
+header{display:flex;align-items:baseline;gap:12px;padding:20px 0;flex-wrap:wrap}
+h1{font-size:18px;letter-spacing:-.01em}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:28px 0 10px}
+a{color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow-x:auto}
+.note{color:var(--muted)}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:12px}
+tr.row{cursor:pointer}tr.row:hover td{background:rgba(127,127,127,.07)}
+.ok{color:var(--pass)}.bad{color:var(--fail)}
+code,pre{font:12px/1.5 var(--mono)}
+pre{white-space:pre-wrap;word-break:break-word;max-height:360px;overflow:auto}
+input{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:0}
+button{font:inherit;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><h1>SWE-bench audit</h1><span class="note" id="mode"></span><span style="flex:1"></span><a href="/">Release gate</a></header>
+
+  <h2>Overview</h2>
+  <div class="card" id="overview">Loading…</div>
+
+  <h2>Reports</h2>
+  <div class="card" id="reports"></div>
+  <div class="card" id="report" hidden><pre></pre></div>
+
+  <section id="browser" hidden>
+    <h2>Tasks</h2>
+    <div class="bar"><input id="q" placeholder="filter by task id" aria-label="Filter tasks"><button id="go">Search</button></div>
+    <div class="card"><table><thead><tr><th>Task</th><th>Repo</th><th>Difficulty</th><th>Runs</th></tr></thead><tbody id="rows"></tbody></table></div>
+    <div class="card" id="detail" hidden style="margin-top:12px"></div>
+  </section>
+</div>
+<script>
+const API = "/api/v1/audit";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const get = async (p) => { const r = await fetch(API + p); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || r.status); return r.json(); };
+
+async function showReport(name) {
+  const box = $("report"); box.hidden = false;
+  try { box.firstElementChild.textContent = JSON.stringify(await get("/reports/" + encodeURIComponent(name)), null, 2); }
+  catch (e) { box.firstElementChild.textContent = "Could not load report: " + e.message; }
+}
+
+async function loadTasks() {
+  const d = await get("/tasks?limit=100&q=" + encodeURIComponent($("q").value));
+  $("rows").innerHTML = d.rows.map((t) => `<tr class="row" data-id="${esc(t.id)}"><td>${esc(t.id)}</td><td>${esc(t.repo)}</td><td>${esc(t.difficulty)}</td>` +
+    `<td>${Object.entries(t.runs).map(([s, v]) => `<span class="${v === "resolved" ? "ok" : "bad"}">${esc(s)}: ${v}</span>`).join(" · ") || "—"}</td></tr>`).join("");
+}
+
+async function showTask(id) {
+  const box = $("detail"); box.hidden = false; box.textContent = "Loading…";
+  try {
+    const d = await get("/tasks/" + encodeURIComponent(id));
+    box.innerHTML = `<strong>${esc(id)}</strong><table><thead><tr><th>Subject</th><th>Grader</th><th>Resolved</th><th>F2P</th><th>P2P</th><th>Evidence (log sha256)</th></tr></thead><tbody>` +
+      d.runs.map((r) => `<tr><td>${esc(r.subject || r.subject_alias)}</td><td>${esc(r.grader)}</td><td class="${r.resolved ? "ok" : "bad"}">${r.resolved ? "yes" : "no"}</td>` +
+        `<td>${r.f2p_passed}/${r.f2p_total}</td><td>${r.p2p_passed}/${r.p2p_total}</td><td><code>${esc((r.log_sha256 || "").slice(0, 16))}</code></td></tr>`).join("") + "</tbody></table>";
+  } catch (e) { box.textContent = "Could not load task: " + e.message; }
+}
+
+(async () => {
+  try {
+    const o = await get("/overview");
+    $("mode").textContent = o.mode + " mode" + (o.write_enabled ? " · review writes on" : "");
+    $("overview").innerHTML = `Dataset <code>${esc(o.dataset)}</code>` + (o.tasks != null ? ` · ${o.tasks} tasks · ${o.annotations} annotations` : "") +
+      (o.grader_runs?.length ? `<table><thead><tr><th>Subject</th><th>Runs</th><th>Resolved</th></tr></thead><tbody>${o.grader_runs.map((r) => `<tr><td>${esc(r.subject)}</td><td>${r.runs}</td><td>${r.resolved}</td></tr>`).join("")}</tbody></table>` : "");
+    $("reports").innerHTML = o.reports.length ? o.reports.map((n) => `<a href="#" data-r="${esc(n)}">${esc(n)}</a>`).join(" · ")
+      : '<span class="note">No published reports on this deployment.</span>';
+    if (o.mode === "local") { $("browser").hidden = false; loadTasks(); }
+  } catch (e) { $("overview").textContent = "Could not load audit overview: " + e.message; }
+})();
+$("reports").addEventListener("click", (e) => { const n = e.target.dataset?.r; if (n) { e.preventDefault(); showReport(n); } });
+$("rows").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-id]"); if (tr) showTask(tr.dataset.id); });
+$("go").addEventListener("click", loadTasks);
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter") loadTasks(); });
+</script>
+</body>
+</html>

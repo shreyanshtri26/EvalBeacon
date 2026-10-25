@@ -32,6 +32,8 @@ from opentelemetry.instrumentation.requests import RequestsInstrumentor
 from prometheus_client import make_asgi_app
 
 from src.api.routes import router
+from src.audit.api import pages as audit_pages
+from src.audit.api import router as audit_router
 from src.collectors.llm_instrumentor import LLMObservabilitySDK
 from src.evalbeacon.api import install_error_handlers
 from src.evalbeacon.api import router as evalbeacon_router
@@ -80,6 +82,8 @@ app.mount("/metrics", metrics_app)
 # Include API routes
 app.include_router(router, prefix="/api/v1")
 app.include_router(evalbeacon_router)
+app.include_router(audit_router)
+app.include_router(audit_pages)
 install_error_handlers(app)
 
 

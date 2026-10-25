@@ -1,0 +1,36 @@
+SWE-bench Verified audit - pre-registration
+Written 2026-10-25, before any result of Q1, Q3, Q5 or Q7 was viewed.
+DISCLOSURE: the Q4 leakage scan (seed leakstudy-v1, 100 tasks) was started before this file was
+written, and one pilot trajectory (astropy-12907) was inspected while building the detector.
+Q4 is therefore exploratory in its detector design; its sample and statistic are fixed below.
+
+Claim under test: part of a SWE-bench Verified resolved rate comes from the grader, the task and the
+scaffold rather than the model. Report estimates with intervals, not "SWE-bench is broken".
+
+Fixed choices
+- Data: SWE-bench Verified, 500 tasks. Harness: swebench 5.0.2, image digests recorded per run.
+- Sampling: seeded proportional stratified by repo (src/audit/sampling.py). Seeds: pilot-controls-v1,
+  leakstudy-v1; annotation sample seed annot-v1, n=100 (pilot of 20 first, then the rest).
+- Intervals: Wilson for proportions; task-clustered bootstrap (10000 resamples) for rates and rankings.
+- Paired comparisons: McNemar. Agreement: Cohen kappa. Rank change: Kendall tau.
+- Multiple comparisons: Holm correction across all hypotheses below.
+
+Hypotheses
+H1 (Q1) Some patches the official tests mark resolved fail a stronger independent test set.
+   Statistic: false-accept rate, Wilson 95% CI. Supported if lower bound > 0.
+H3 (Q3) A non-trivial share of tasks is underspecified or its tests check behaviour the issue never
+   states. Statistic: share of the annotated sample with a rubric defect, Wilson 95% CI.
+   Annotators are blind to which model produced any patch; pilot disagreements are reported.
+H4 (Q4) Some public trajectories show gold-patch lines in command output the agent should not see.
+   Statistic: events / observations per group, task-clustered CI, before vs after the history fix.
+H5 (Q5) The gold patch does not give the same verdict on every rerun for some tasks.
+   Statistic: share of tasks with disagreement over N=5 reruns, Wilson 95% CI.
+H7 (Q7) Removing defective tasks changes at least one adjacent ranking pair beyond the null noise
+   floor (nullrank: k random tasks removed, same k). Statistic: Kendall tau with bootstrap CI.
+
+Validity gates
+- Controls first: gold patch must resolve, empty patch must not. A task failing a control is excluded
+  and counted.
+- Any LLM-assisted label is checked against human labels on a held-out slice; accuracy is reported.
+
+Not tested: private models, closed leaderboards, agents run by us (Q4 localisation probe needs model spend).

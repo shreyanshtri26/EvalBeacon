@@ -157,7 +157,7 @@ Requires Python 3.11+ and [uv](https://docs.astral.sh/uv/). The demo and the tes
 
 ```bash
 uv sync --extra dev
-uv run pytest                                      # offline, no keys: 257 tests (1 skipped: real-S3, opt-in)
+uv run pytest                                      # offline, no keys: 297 tests (1 skipped: real-S3, opt-in)
 uv run ruff check . && uv run mypy                 # lint and types
 uv run evalbeacon demo --candidate candidate-bad   # degraded candidate  -> exit 1
 uv run evalbeacon demo --candidate candidate-good  # healthy candidate   -> exit 0
@@ -222,6 +222,26 @@ Helper scripts: `scripts/expect_exit.py` (assert an exact exit code, and say whe
 | `GET /health`, `GET /metrics`, `GET /docs` | Health, Prometheus metrics (full app only), OpenAPI |
 
 Validation failures return 422 without echoing the rejected input.
+
+## SWE-bench audit
+
+`swebench-audit` measures how much of a SWE-bench Verified score comes from the grader, the task and the scaffold rather than the model. Hidden fields (gold patch, tests) stay in a restricted file and are never served; the hosted app is read-only.
+
+| Command | Purpose |
+|---|---|
+| `fetch` / `sample --seed S --per-repo N` | Download Verified, split public and restricted; reproducible stratified sample |
+| `pull` / `controls --sample NAME` | Pull images; gold-patch (must resolve) and empty-patch (must not) controls in the sandbox |
+| `matrix` | Comparability matrix over every public Verified submission |
+| `leakstudy` | History-leak scan of mini-SWE-agent trajectories, before vs after the image fix (task-clustered CI) |
+| `regrade --entry E` | Re-grade a submission's patches and compare with its reported verdicts |
+| `nullrank` | Rank stability when k random tasks are removed (the noise floor) |
+| `status` | What has been run and reviewed |
+
+API under `/api/v1/audit`: `overview`, `reports/{name}`, `tasks`, `tasks/{id}`, `evidence/{sha}`, `agreement`, and `POST annotations` / `adjudications`, which need `AUDIT_WRITE=1` (local single-user only). `AUDIT_DATA` and `AUDIT_DB` override the data and database paths. Reports are written to `data/audit/reports`.
+
+The browser UI is at `/audit` (task browser, grader evidence hashes, published reports). On the hosted app it runs in reports-only mode: no benchmark data is shipped, so the task list is absent and review writes are disabled. Study protocol and annotation rubric: `audit/preregistration.txt` and `audit/rubric.txt`.
+
+**Status.** Implemented and covered by offline tests (stats, core, API, study); the hosted run needs no Docker. Not yet done: the full 100-task contamination study and re-grading runs were started locally but their results are not published here, so no audit finding is claimed in this README.
 
 ## Datasets and evaluators
 
@@ -402,6 +422,7 @@ src/evalbeacon/   core, judge, similarity, redact, store, history, drift, replay
 src/collectors/   OpenTelemetry SDK, OpenAI-compatible collector, LangChain handler, providers
 src/exporters/    cost estimator and price table
 src/api/          FastAPI app (instrumented chat and RAG demo endpoints)
+src/audit/        SWE-bench audit: tasks, sandbox, grader, controls, submissions, stats, experiments, API, CLI
 schemas/          report.schema.json (JSON Schema for every output)
 datasets/         sample support datasets and production samples
 configs/          gate policy, collector, Prometheus, Loki, Alertmanager, Grafana provisioning, alert rules
